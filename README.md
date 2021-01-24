@@ -1,4 +1,4 @@
-# home_DAQ_gas_heater
+# home DAQ gas heater
 Wemos D1 dual DS1820 temperature logger
 
 ThingSpeak channels
