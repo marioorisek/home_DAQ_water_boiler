@@ -4,16 +4,8 @@
 #include <DallasTemperature.h>
 #include <ESP8266WiFi.h>
 #include <ThingSpeak.h>
-
-#define AVERAGING 10
-
-const char* ssid = "MATRIXHOME";
-const char* password = "9876543210";
-
-// ThingSpeak information
-char thingSpeakAddress[] = "api.thingspeak.com";
-unsigned long channelID = 1257117;
-char* writeAPIKey = "YJ0ZBKDHD135BTSG";
+#include "cfg.h"
+#include "wifi_cfg.h"
 
 // Global variables
 float temp_in = 0.0;
@@ -21,13 +13,10 @@ float temp_out = 0.0;
 
 WiFiClient client;
 
-// Data wire is plugged into port 2 on the Arduino
-// DS1820 init (out)
-#define DS_PIN_IN  D10
-#define DS_PIN_OUT D13
 OneWire oneWireDS_in(DS_PIN_IN);
-DallasTemperature sens_DS_in(&oneWireDS_in);
 OneWire oneWireDS_out(DS_PIN_OUT);
+
+DallasTemperature sens_DS_in(&oneWireDS_in);
 DallasTemperature sens_DS_out(&oneWireDS_out);
 
 float temps_in[AVERAGING];
@@ -36,13 +25,11 @@ float temps_out[AVERAGING];
 float sum_out = 0.0;
 
 
-int connectWiFi() {
+void connectWiFi() {
 
   WiFi.mode(WIFI_STA);
   while (WiFi.status() != WL_CONNECTED) {
-
     WiFi.begin( ssid, password );
-
     Serial.println("Connecting to WiFi");
     delay(10000);
   }
@@ -52,8 +39,6 @@ int connectWiFi() {
   Serial.print(ssid);
   Serial.print(" IP address: ");
   Serial.println(WiFi.localIP());
-
-
   ThingSpeak.begin( client );
 }
 
@@ -70,7 +55,7 @@ int writeTSData( long TSChannel, unsigned int TSField, float data ) {
 
 void writeMultipleTSData() {
 
-  // set the fields with the values
+  // write multiple fields to TS channel
 
  ThingSpeak.setField(2, temp_in);
  ThingSpeak.setField(3, temp_out);
@@ -85,17 +70,12 @@ void writeMultipleTSData() {
  }
 }
 
-
-
-/*
-   Setup function. Here we do the basics
-*/
 void setup(void) {
-  // power-up temperature sensor
-  pinMode(D11, OUTPUT);
-  digitalWrite(D11, HIGH);
-  pinMode(D12, OUTPUT);
-  digitalWrite(D12, HIGH);
+  // power-up temperature sensors
+  pinMode(SENSOR_PWR_1, OUTPUT);
+  digitalWrite(SENSOR_PWR_1, HIGH);
+  pinMode(SENSOR_PWR_2, OUTPUT);
+  digitalWrite(SENSOR_PWR_2, HIGH);
   delay(2000);
 
   // start serial port
@@ -104,7 +84,7 @@ void setup(void) {
   // connect to WiFi
   connectWiFi();
 
-  // init temp sensor DS1820
+  // init temp sensors DS1820
   sens_DS_in.begin();
   sens_DS_out.begin();
   delay(2000);
@@ -113,8 +93,11 @@ void setup(void) {
 void loop(void)
 {
   for (byte i = 0; i < AVERAGING; i++) {
+    // request temperature readings
     sens_DS_in.requestTemperatures();
     sens_DS_out.requestTemperatures();
+
+    // store readings
     temps_in[i] = sens_DS_in.getTempCByIndex(0);
     temps_out[i] = sens_DS_out.getTempCByIndex(0);
 
@@ -124,8 +107,10 @@ void loop(void)
     Serial.print(" deg. C | Outlet temperature: ");
     Serial.print(temps_out[i], 1);
     Serial.println(" deg. C");
-    delay(55000);
+    delay(58000);
   }
+
+  //  temperature averaging for ThingSpeak Cloud
 
   sum_in = 0.0;
   sum_out = 0.0;
